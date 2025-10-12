@@ -2,7 +2,9 @@
 
 ## Using ESP32, TFT Touch Display, and CANbus for Connectivity
 
-![cyd_display](photos/CYD-display-with-CANbus.jpg)
+![cyd_display](photos/start_to_run_screen.jpg)
+
+![cyd_display](photos/preheating.jpg)
 
 ![remote_pod](photos/pod-remote-tcouple-ssr.jpg)
 
