@@ -57,15 +57,15 @@ extern const char *MY_INO_FILE;
 #define VERBOSE_SERIAL_TTY   // turn this OFF for productio
 
 #define EEPROM_SIZE               1500
-#define USER_EEPROM_START_ADDR       0  // for the demo, pick something other than the base (0)
+#define USER_EEPROM_START_ADDR       0 
 #define MY_MAGIC_VAL                47
 #define SW_VERSION             "v1.0.0"
 
 
 // canbus constants
 #define CANBUS_BAUD_RATE        500  // in 'k' units
-#define CANBUS_TX_TICK_COUNT    200 //200
-#define CANBUS_RX_TICK_COUNT    200 //200
+#define CANBUS_TX_TICK_COUNT    100 //200
+#define CANBUS_RX_TICK_COUNT    100 //200
 
 // user defined message types
 #define CANID_REPORT_TEMP       0x0A  //(payload is format 'T0234.75')
@@ -79,7 +79,10 @@ extern const char *MY_INO_FILE;
 
 
 
+//
 // protos
+//
+
 void canbus_init(uint8_t rx_pin, uint8_t tx_pin);
 
 // 2 versions (char * and byte array)
@@ -88,6 +91,26 @@ bool canbus_send(uint16_t msg_id, uint8_t msg_len, char *msg_bytes);
 
 void handle_rx_message(twai_message_t &message);
 bool set_remote_ssr(bool ssr_val);
+
+void printState(void);
+void drawGrid(void);
+void drawButton(int x, int y, int w, int h, uint16_t backgroundColor, uint16_t textColor, String text);
+
+// original version for backward compat
+//void writeText(int x, int y, int w, int h, int justification, uint16_t textColor, uint16_t bgTextColor, String text, int8_t xOffset = 0, bool fullLinePadding = false);
+
+// this version takes both x and y offsets for more placement flexability
+void writeText(int x, int y, int w, int h, int justification, uint16_t textColor, uint16_t bgTextColor, String text, int8_t xOffset=0, int8_t yOffset=0, bool fullLinePadding = false);
+
+void drawSetupMenu(void);
+void drawReflowMenu(void);
+void drawEditMenu(String stage, uint16_t bgColor);
+int getGridCellX(void);
+int getGridCellY(void);
+String formatTime(unsigned long milliseconds);
+void plotDataPoint(void);
+void plotReflowProfile(void);
+
 
 
 #endif // _REFLOW_OVEN_H_

@@ -1,11 +1,9 @@
-// esp_reflow_oven.ino
+// solder_reflow_oven.ino
 //
-// updated solder reflow oven for graphical display, using CANbus
-//  for remote connectivity of the CYD display and a sensor 'pod'.
+// updated solder reflow oven for graphical display
 //
 // original src: https://github.com/aBoyCanDream/Solder-Reflow-Oven
-//
-// last update: 2025-oct-12 linux-works labs
+// last update: 2025-oct-04 linux-works
 
 
 #include <Arduino.h>
@@ -36,6 +34,9 @@ XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
 
 
 
+
+
+
 const int displayWidth = SCREEN_WIDTH;
 const int displayHeight = SCREEN_HEIGHT;
 const int gridSize = 53; //80;  // Our 320x240 display is 2/3 the size of the 480x320
@@ -55,15 +56,15 @@ unsigned long timeSinceReflowStarted;
 unsigned long timeTempCheck = 1000;
 unsigned long lastTimeTempCheck = 0;
 
-double preheatTemp  = 100;
-double soakTemp     = 140;
+double preheatTemp  =  95;
+double soakTemp     = 150;
 double reflowTemp   = 235;
 double cooldownTemp =  25;
 
-unsigned long preheatTime   = 30 * 1000;
-unsigned long soakTime      = 90 * 1000;
-unsigned long reflowTime    = 70 * 1000;
-unsigned long cooldownTime  = 40 * 1000;
+unsigned long preheatTime   = 35 * 1000;
+unsigned long soakTime      = 75 * 1000;
+unsigned long reflowTime    = 105 * 1000;
+unsigned long cooldownTime  = 35 * 1000;
 unsigned long totalTime = (preheatTime + soakTime + reflowTime + cooldownTime);
 
 bool preheating = false;
@@ -106,21 +107,6 @@ PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 
 
-
-// protos
-
-void printState(void);
-void drawGrid(void);
-void drawButton(int x, int y, int w, int h, uint16_t backgroundColor, uint16_t textColor, String text);
-void writeText(int x, int y, int w, int h, int justification, uint16_t textColor, uint16_t bgTextColor, String text, int8_t xOffset = 0, bool fullLinePadding = false);
-void drawSetupMenu(void);
-void drawReflowMenu(void);
-void drawEditMenu(String stage, uint16_t bgColor);
-int getGridCellX(void);
-int getGridCellY(void);
-String formatTime(unsigned long milliseconds);
-void plotDataPoint(void);
-void plotReflowProfile(void);
 
 
 
@@ -204,7 +190,7 @@ bool canbus_send (uint16_t msg_id, uint8_t msg_len, char *msg_bytes)
 bool canbus_send (uint16_t msg_id, uint8_t msg_len, uint8_t *msg_bytes)
 {
 #ifdef VERBOSE_SERIAL_TTYx
-  Serial.print("canbus_send("); Serial.print(msg_id, HEX); Serial.print(", [");
+  Serial.print("_canbus_send("); Serial.print(msg_id, HEX); Serial.print(", [");
   for (int i = 0; i < msg_len; i++) {
     Serial.print((char)msg_bytes[i]);
   }
@@ -381,7 +367,10 @@ void setup (void)
   tft.setTextSize(1);
 
 
+
+
   //PID stuff
+
   Setpoint = cooldownTemp;
 
   // tell the PID to range between 0 and the full window size
@@ -390,6 +379,8 @@ void setup (void)
   // turn the PID on
   myPID.SetMode(AUTOMATIC);
 }
+
+
 
 
 
@@ -407,11 +398,6 @@ void printTouchToSerial(int touchX, int touchY, int touchZ)
 }
 
 
-
-
-// this was a test loop to see if resistive touch works and if the x,y returned are valid.
-// only enable this if you need to do testing of the touch screen, etc.  left here just as a docs
-// help.
 #if 0
 void loop1 (void)
 {
@@ -436,10 +422,6 @@ void loop1 (void)
 
 
 
-//
-// the real loop()
-//
-
 void loop (void)
 {
   twai_message_t message;
@@ -449,9 +431,9 @@ void loop (void)
   // any CAN messages, for us, on the bus?
   //
 
-  if (twai_receive(&message, pdMS_TO_TICKS(CANBUS_RX_TICK_COUNT)) == ESP_OK) {
-    handle_rx_message(message);
-  }
+  //if (twai_receive(&message, pdMS_TO_TICKS(CANBUS_RX_TICK_COUNT)) == ESP_OK) {
+  //  handle_rx_message(message);
+  //}
 
 
   // periodically send ssr updates (starting off at initial state, we ensure its OFF)
@@ -468,14 +450,6 @@ void loop (void)
   Serial.println("Setup Menu");
 
   while (setupMenu) {
-
-    //
-    // any CAN messages, for us, on the bus?
-    //
-
-    if (twai_receive(&message, pdMS_TO_TICKS(CANBUS_RX_TICK_COUNT)) == ESP_OK) {
-      handle_rx_message(message);
-    }
 
     if (tp_clicked()) {
 
@@ -530,14 +504,6 @@ void loop (void)
 
           while (editMenu) { // Stay in this loop until the save button is pressed
 
-            //
-            // any CAN messages, for us, on the bus?
-            //
-
-            if (twai_receive(&message, pdMS_TO_TICKS(CANBUS_RX_TICK_COUNT)) == ESP_OK) {
-              handle_rx_message(message);
-            }
-
             if (tp_clicked()) {
 
               if (millis() - touchLastMillis > debounceDelay) {
@@ -559,7 +525,7 @@ void loop (void)
 
                     if (editingPreheat) {
                       if (preheatTemp < 300) {
-                        preheatTemp += 10;
+                        preheatTemp += 1; //0;
                         String preheatTempString = String(int(preheatTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, preheatColor, preheatTempString);
                       }
@@ -567,7 +533,7 @@ void loop (void)
 
                     if (editingSoak) {
                       if (soakTemp < 300) {
-                        soakTemp += 10;
+                        soakTemp += 1; //0;
                         String soakTempString = String(int(soakTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, soakColor, soakTempString);
                       }
@@ -575,7 +541,7 @@ void loop (void)
 
                     if (editingReflow) {
                       if (reflowTemp < 300) {
-                        reflowTemp += 10;
+                        reflowTemp += 1; //0;
                         String reflowTempString = String(int(reflowTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, reflowColor, reflowTempString);
                       }
@@ -614,7 +580,7 @@ void loop (void)
                     //tft.fillRoundRect(1*gridSize+2, 0*gridSize+2, 2*gridSize-4, gridSize-4, 10, TFT_BLACK);
                     if (editingPreheat) {
                       if (preheatTemp > 100) {
-                        preheatTemp -= 10;
+                        preheatTemp -= 1; //0;
                         String preheatTempString = String(int(preheatTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, preheatColor, preheatTempString);
                       }
@@ -622,7 +588,7 @@ void loop (void)
 
                     if (editingSoak) {
                       if (soakTemp > 100) {
-                        soakTemp -= 10;
+                        soakTemp -= 1; //0;
                         String soakTempString = String(int(soakTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, soakColor, soakTempString);
                       }
@@ -630,7 +596,7 @@ void loop (void)
 
                     if (editingReflow) {
                       if (reflowTemp > 100) {
-                        reflowTemp -= 10;
+                        reflowTemp -= 1; //0;
                         String reflowTempString = String(int(reflowTemp)) + " C";
                         writeText(1, 0, 2, 1, 6, TFT_WHITE, reflowColor, reflowTempString);
                         //writeText(1,0,2,1, 6, TFT_WHITE, reflowColor, String(int(reflowTemp)));
@@ -700,7 +666,7 @@ void loop (void)
 
   drawReflowMenu();
 
-  drawButton(0, 3, 2, 1, TFT_GREEN, TFT_WHITE, "Start");
+  drawButton(0, 3, 2, 1, TFT_GREEN, TFT_BLACK, "Start");
 
   bool start = false;
   while (!start) {
@@ -754,6 +720,7 @@ void loop (void)
 
 
       // note, 'Input' is kept updated via a stream of CANbus messages directed to us from the 'pod'
+      //Input = 100;  // debug
 
 
       Serial.print("\tInput:");
@@ -762,12 +729,12 @@ void loop (void)
       myPID.Compute();
 
       if (Output < 0.5) {
-        //digitalWrite(SSR_PIN, LOW);   // do a remote set over canbus
+        //digitalWrite(SSR_PIN, LOW);
         set_remote_ssr(LOW);
       }
 
       if (Output > 0.5) {
-        //digitalWrite(SSR_PIN, HIGH); // do a remote set over canbus
+        //digitalWrite(SSR_PIN, HIGH);
         set_remote_ssr(HIGH);
       }
 
@@ -831,17 +798,9 @@ void loop (void)
     }
   }
 
-  drawButton(0, 3, 2, 1, TFT_GREEN, TFT_WHITE, "Done");
+  drawButton(0, 3, 2, 1, TFT_CYAN, TFT_BLACK, "Done");
   bool done = false;
   while (!done) {
-
-    //
-    // any CAN messages, for us, on the bus?
-    //
-
-    if (twai_receive(&message, pdMS_TO_TICKS(CANBUS_RX_TICK_COUNT)) == ESP_OK) {
-      handle_rx_message(message);
-    }
 
     if (tp_clicked()) {
 
@@ -858,17 +817,33 @@ void loop (void)
 
 
 
-
 void printState (void)
 {
-  String time = formatTime(timeSinceReflowStarted);
-  Serial.print("Current time: "); Serial.print(time); Serial.print("\t");
+  uint16_t fg_color;
 
-  //tft.fillRoundRect(4*gridSize+2, 3*gridSize+2, 2*gridSize-4, gridSize-4, 10, TFT_BLACK);
-  writeText(4, 3, 2, 1, 1, TFT_WHITE, TFT_BLACK, time, 10, true);
+  if (preheating) {
+    fg_color = preheatColor;
+  }
+
+  if (soaking) {
+    fg_color = soakColor;
+  }
+
+  if (reflowing) {
+    fg_color = reflowColor;
+  }
+
+  if (coolingDown) {
+    fg_color = cooldownColor;
+  }
+
+
+  String rtime = formatTime(timeSinceReflowStarted) + " Secs";
+  Serial.print("Current time: "); Serial.print(rtime); Serial.print(" ");
+  writeText(4, 3, 2, 1, 1, fg_color, TFT_BLACK, rtime, 0, 23, true);
 
   String tempReading = String(Input) + " C";
-  writeText(4, 3, 2, 1, 3, TFT_WHITE, TFT_BLACK, tempReading, 10, true);
+  writeText(4, 3, 2, 1, 3, fg_color, TFT_BLACK, tempReading, 0, 25, true);
 
   String currentState;
   if (preheating) {
@@ -903,7 +878,7 @@ void printState (void)
 
     writeText(2, 0,
               2, 1,
-              4, TFT_WHITE, TFT_BLACK, currentState);
+              4, fg_color, TFT_BLACK, currentState);
   }
 }
 
@@ -912,10 +887,15 @@ void drawGrid (void)
 {
   //tft.setFont();
   tft.setTextColor(TFT_WHITE);
-  tft.drawRect(0, 0, displayWidth, displayHeight - gridSize, gridColor);
+
+  tft.drawRect(0, 0, displayWidth,
+               (displayHeight - 1.5 * gridSize),
+               gridColor);
 
   for (int i = 1; i < 6; i++) {
-    tft.drawFastVLine(i * gridSize, 0, displayHeight - gridSize, gridColor);
+    tft.drawFastVLine(i * gridSize, 0,
+                      (displayHeight - 1.5 * gridSize),
+                      gridColor);
   }
 
   for (int j = 1; j < 4; j++) {
@@ -926,44 +906,68 @@ void drawGrid (void)
 
   tft.setTextDatum(TL_DATUM);
   tft.drawString("300", 4, 2);
-  //tft.setCursor(4,tft.fontHeight()); tft.print("300");
   tft.drawString("200", 4, 1 * gridSize + 2);
   tft.drawString("100", 4, 2 * gridSize + 2);
 
 
+  int y_pos = 3 * gridSize + 15;
+  int x_off = -30;  // help left-justify values
 
   tft.setFreeFont(FSI9);
 
-  tft.setCursor(1 * gridSize + 4,
-                3 * gridSize - 7 - 4);
+  // first time marker
+  tft.setCursor(0,
+                y_pos);
+  tft.print(formatTime(0));
+
+
+  // 2nd thru 2nd-to-last time markers
+  tft.setCursor(x_off + 1 * gridSize + 4 + 4,
+                y_pos);
   tft.print(formatTime(totalTime / 6));
 
-  tft.setCursor(2 * gridSize + 4,
-                3 * gridSize - 7 - 4);
+  tft.setCursor(x_off + 2 * gridSize + 4 + 2,
+                y_pos);
   tft.print(formatTime(2 * totalTime / 6));
 
-  tft.setCursor(3 * gridSize + 4,
-                3 * gridSize - 7 - 4);
+  tft.setCursor(x_off + 3 * gridSize + 4,
+                y_pos);
   tft.print(formatTime(3 * totalTime / 6));
 
-  tft.setCursor(4 * gridSize + 4,
-                3 * gridSize - 7 - 4);
+  tft.setCursor(x_off + 4 * gridSize + 4,
+                y_pos);
   tft.print(formatTime(4 * totalTime / 6));
 
-  tft.setCursor(5 * gridSize + 4,
-                3 * gridSize - 7 - 4);
+  tft.setCursor(x_off + 5 * gridSize + 4,
+                y_pos);
   tft.print(formatTime(5 * totalTime / 6));
+
+  // last graph time point
+  tft.setCursor(x_off + 6 * gridSize + 4,
+                y_pos);
+  tft.print(formatTime(6 * totalTime / 6));
 
   plotReflowProfile();
 }
 
+
+
+
+
 #define BUTTON_W 46
 #define BUTTON_H 40
 
-void drawButton (int x, int y, int w, int h, uint16_t backgroundColor, uint16_t textColor, String text)
+void drawButton (int x, int y,
+                 int w, int h,
+                 uint16_t backgroundColor, uint16_t textColor,
+                 String text)
 {
+  int extra_y_offset = 0;
+  float y_scale = 1.0;
+
+
   //tft.setFont(&FreeMonoBold12pt7b);
-  tft.setFreeFont(FM9);
+  tft.setFreeFont(FSBI12 /*FM9*/);
   tft.setTextColor(textColor);
 
   /*   if (backgroundColor == TFT_BLACK) {
@@ -973,37 +977,59 @@ void drawButton (int x, int y, int w, int h, uint16_t backgroundColor, uint16_t 
        tft.fillRoundRect(x*gridSize+2, y*gridSize+2, w*gridSize-4, h*gridSize-4, 10, backgroundColor);
        } */
 
-  tft.fillRoundRect(x * gridSize + 2,
-                    y * gridSize + 2,
-                    w * gridSize - 4,
-                    h * gridSize - 4,
-                    8,
-                    backgroundColor);
+
+  if (y != 3) {  // usual case
+    tft.fillRoundRect(x * gridSize + 2,
+                      y * gridSize + 2,
+                      w * gridSize - 4,
+                      h * gridSize - 4,
+                      8,
+                      backgroundColor);
+  } else {
+    tft.fillRoundRect(x * gridSize + 2,
+                      y * gridSize + 40 - 7,
+                      w * gridSize - 4,
+                      (h * gridSize - 4) * y_scale,
+                      8,
+                      backgroundColor);
+
+    extra_y_offset = 2;
+  }
+
+
+  // weird code: special case based on the contents?  ok....
 
   if (text == "UP_ARROW") {
     tft.fillTriangle(x * gridSize + (w * gridSize - BUTTON_W) / 2,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
                      x * gridSize + (w * gridSize - BUTTON_W) / 2 + BUTTON_W,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
                      x * gridSize + w * gridSize / 2,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2,
                      textColor);
-  }
-  else if (text == "DOWN_ARROW") {
+
+  } else if (text == "DOWN_ARROW") {
     tft.fillTriangle(x * gridSize + (w * gridSize - BUTTON_W) / 2,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2,
                      x * gridSize + (w * gridSize - BUTTON_W) / 2 + BUTTON_W,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2,
                      x * gridSize + w * gridSize / 2,
-                     y * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
+                     (y + extra_y_offset) * gridSize + (h * gridSize - BUTTON_H) / 2 + BUTTON_H,
                      textColor);
-  }
-  else {
+  } else {
     tft.setTextDatum(MC_DATUM);
 
-    tft.drawString(text,
-                   (x * gridSize) + ((w * gridSize) / 2),
-                   (y * gridSize) + ((h * gridSize)) / 2);
+    if (y != 3) {  // usual case
+      tft.drawString(text,
+                     (x * gridSize) + ((w * gridSize) / 2),
+                     ((y + extra_y_offset) * gridSize) + ((h * gridSize)) / 2);
+    } else {
+      tft.drawString(text,
+                     (x * gridSize) + ((w * gridSize) / 2),
+                     (y * gridSize) + ((h * gridSize)) / 2 + 28);
+
+    }
+
   }
 }
 
@@ -1016,74 +1042,75 @@ uint8_t margin = 4;
 // 3 6 9
 
 
-void writeText (int x, int y, int w, int h,
+// new version, allows user to add an x and y extra offset
+void writeText (int x, int y,
+                int w, int h,
                 int justification,
                 uint16_t textColor, uint16_t bgTextColor,
                 String text,
-                int8_t xOffset, bool fullLinePadding)
+                int8_t xOffset, int8_t yOffset, bool fullLinePadding)   // these 3 params have default values
 {
-  tft.setFreeFont(FSB12);
-
   int16_t textBoundX, textBoundY;
   uint16_t textBoundWidth, textBoundHeight;
+  uint32_t xPos, yPos;
+
+  tft.setFreeFont(FSB12);
 
   textBoundWidth = tft.textWidth(text);
   textBoundHeight = tft.fontHeight();
 
-  uint32_t xPos, yPos;
-
   switch (justification) {
     case 1: //top left
       xPos = x * gridSize + margin + xOffset;
-      yPos = y * gridSize + margin;
+      yPos = y * gridSize + margin + yOffset;
       tft.setTextDatum(TL_DATUM);
       break;
 
     case 2: //center left
       xPos = x * gridSize + margin + xOffset;
-      yPos = y * gridSize + ((h * gridSize) / 2);
+      yPos = y * gridSize + ((h * gridSize) / 2) + yOffset;
       tft.setTextDatum(CL_DATUM);
       break;
 
     case 3: //bottom left
       xPos = x * gridSize + margin + xOffset;
-      yPos = (y * gridSize) + (h * gridSize) - margin;
+      yPos = (y * gridSize) + (h * gridSize) - margin + yOffset;
       tft.setTextDatum(BL_DATUM);
       break;
 
     case 4:
       xPos = x * gridSize + ((w * gridSize) / 2) + margin + xOffset;
-      yPos = y * gridSize + margin;
+      yPos = y * gridSize + margin + yOffset;
       tft.setTextDatum(TC_DATUM);
       break;
 
     case 5:
       xPos = x * gridSize + ((w * gridSize) / 2) + xOffset;
-      yPos = y * gridSize + ((h * gridSize) / 2);
+      yPos = y * gridSize + ((h * gridSize) / 2) + yOffset;
       tft.setTextDatum(CC_DATUM);
       break;
 
     case 6:
       xPos = x * gridSize + ((w * gridSize) / 2) + margin + xOffset;
-      yPos = (y * gridSize) + (h * gridSize) - margin;
+      yPos = (y * gridSize) + (h * gridSize) - margin + yOffset;
       tft.setTextDatum(BC_DATUM);
       break;
 
     case 7:
       xPos = (x * gridSize) + (w * gridSize) - margin - xOffset;
-      yPos = y * gridSize + margin;
+      yPos = y * gridSize + margin + yOffset;
       tft.setTextDatum(TR_DATUM);
       break;
 
     case 8:
       xPos = (x * gridSize) + (w * gridSize) - margin - xOffset;
-      yPos = y * gridSize + ((h * gridSize) / 2);
+      yPos = y * gridSize + ((h * gridSize) / 2) + yOffset;
       tft.setTextDatum(CR_DATUM);
       break;
 
     case 9:
       xPos = (x * gridSize) + (w * gridSize) - margin - xOffset;
-      yPos = (y * gridSize) + (h * gridSize) - margin;
+      yPos = (y * gridSize) + (h * gridSize) - margin + yOffset;
       tft.setTextDatum(BR_DATUM);
       break;
   }
@@ -1094,11 +1121,9 @@ void writeText (int x, int y, int w, int h,
 
   tft.setTextColor(textColor, bgTextColor);
 
-  //
-  //
-  //tft.setTextDatum(L_BASELINE);
   tft.drawString(text, xPos, yPos);
 }
+
 
 
 
@@ -1110,22 +1135,22 @@ void drawSetupMenu (void)
   drawButton(2, 0, 2, 3, soakColor, TFT_WHITE, "");
   drawButton(4, 0, 2, 3, reflowColor, TFT_WHITE, "");
 
+  tft.setFreeFont(FM9);
   writeText(0, 0, 2, 1, 5, TFT_WHITE, preheatColor,  "Preheat");
   writeText(2, 0, 2, 1, 5, TFT_WHITE, soakColor, "Soak");
   writeText(4, 0, 2, 1, 5, TFT_WHITE, reflowColor, "Reflow");
+
+  tft.setFreeFont(FSI9);
   writeText(0, 1, 2, 1, 4, TFT_WHITE, preheatColor, String(int(preheatTemp)) + " C");
   writeText(2, 1, 2, 1, 4, TFT_WHITE, soakColor, String(int(soakTemp)) + " C");
   writeText(4, 1, 2, 1, 4, TFT_WHITE, reflowColor, String(int(reflowTemp)) + " C");
-  writeText(0, 1, 2, 1, 6, TFT_WHITE, preheatColor, String(formatTime(preheatTime)));
-  writeText(2, 1, 2, 1, 6, TFT_WHITE, soakColor, String(formatTime(soakTime)));
-  writeText(4, 1, 2, 1, 6, TFT_WHITE, reflowColor, String(formatTime(reflowTime)));
-  writeText(0, 2, 2, 1, 4, TFT_WHITE, preheatColor, "min");
-  writeText(2, 2, 2, 1, 4, TFT_WHITE, soakColor, "min");
-  writeText(4, 2, 2, 1, 4, TFT_WHITE, reflowColor, "min");
 
-  drawButton(0, 3, 6, 1, TFT_GREEN, TFT_WHITE, "Confirm");
+  writeText(0, 1, 2, 1, 6, TFT_WHITE, preheatColor, String(formatTime(preheatTime)) + " Sec");
+  writeText(2, 1, 2, 1, 6, TFT_WHITE, soakColor, String(formatTime(soakTime)) + " Sec");
+  writeText(4, 1, 2, 1, 6, TFT_WHITE, reflowColor, String(formatTime(reflowTime)) + " Sec");
 
-  //tft.drawCircle(95,87,4,TFT_WHITE); tft.drawCircle(255,87,4,TFT_WHITE); tft.drawCircle(415,87,4,TFT_WHITE); // These are the degree circles. They are absolute so need to change to scale. The x axis does not correspond perfectly to 2/3 for some reason
+  tft.setFreeFont(FSB9);
+  drawButton(0, 3, 6, 1, TFT_GREEN, TFT_BLACK, "Confirm");
 }
 
 
@@ -1136,10 +1161,9 @@ void drawReflowMenu (void)
 
   drawGrid();
 
-  writeText(3, 3, 1, 1, 7, TFT_WHITE, TFT_BLACK, "Time: ");
-  writeText(3, 3, 1, 1, 9, TFT_WHITE, TFT_BLACK, "Temp: ");
+  writeText(3, 3, 1, 1, 7, TFT_CYAN, TFT_BLACK, "Time: ", 5, 23, false);  // add more y offset
+  writeText(3, 3, 1, 1, 9, TFT_CYAN, TFT_BLACK, "Temp: ", 5, 25, false);  // add more y offset
 
-  //drawButton(0,3,2,1, TFT_RED, TFT_WHITE, "Stop");
   drawButton(0, 3, 2, 1, TFT_RED, TFT_WHITE, "Start");
 }
 
@@ -1173,7 +1197,6 @@ void drawEditMenu (String stage, uint16_t bgColor)
 
 int getGridCellX (void)
 {
-  //int xpoint = touchpoint.x;
   int xpoint = GET_X_COORDINATE();
 
   Serial.print("x resistance: "); Serial.print(xpoint); Serial.print(" ");
@@ -1236,6 +1259,7 @@ String formatTime (unsigned long milliseconds)
 
   return formattedTime;
 }
+
 
 
 
@@ -1313,4 +1337,4 @@ void plotReflowProfile (void)
   }
 }
 
-// end esp_reflow_oven.ino
+// end solder_reflow_oven.ino
