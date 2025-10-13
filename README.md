@@ -2,6 +2,8 @@
 
 ## Using ESP32, TFT Touch Display, and CANbus for Connectivity
 
+![simple_oven](photos/cheap_toaster_oven.jpg)
+
 ![main_menu](photos/main_menu.jpg)
 
 ![set_reflow_temp](photos/set_reflow_temp.jpg)
