@@ -58,8 +58,8 @@ This is a raspberry pi running candump from the can-utils pkg.
 
 I defined 3 message types:
 
-* #define CANID_REPORT_TEMP       0x0A  //(payload is format 'T0234.75')
-* #define CANID_SET_RELAY         0x0B  //(payload is single byte: 0=off, 1=on)
+* #define CANID_REPORT_TEMP       0x0A  //(payload is like 'T0234.75')
+* #define CANID_SET_RELAY         0x0B  //(payload is SSR0 or SSR1)
 * #define CANID_REPORT_STATUS     0x0C  //(payload is single byte: 0=safety_shutdown, 1=admin_off, 2=admin_on
 
 The payloads are in simple ascii to make debug easier.  No need for extreme tight binary encoding, really.
