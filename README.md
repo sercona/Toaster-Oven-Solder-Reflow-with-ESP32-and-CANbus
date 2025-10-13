@@ -18,7 +18,7 @@
 
 ![arduino_ide_console](photos/arduino-ide-console.png)
 
-![paper_profile_compare](photos/paper-profile-compare.png)
+![paper_profile_compare](photos/profile_compare.jpg)
 
 ...more to come as I document and finish this project.
 
