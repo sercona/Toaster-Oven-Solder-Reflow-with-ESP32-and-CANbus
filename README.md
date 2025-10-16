@@ -9,6 +9,10 @@ After the controller was built, one test run:
 ![first try](photos/first-reflow-try.jpg)
 
 
+The curve was close; ramp-up speed of the oven is slow.
+
+![curve](photos/follow-the-curve.jpeg)
+
 
 ## First boot screen
 
