@@ -4,13 +4,9 @@
 
 Yet another toaster oven soldering reflow mod.  Using a pair of ESP32 chips, a graphic touch display, a thermocouple, an SSR (solid state relay) and linking a remote 'pod' with the main graphic using CANbus (a high speed and high reliability 2 wire bus).
 
-Here is a cheap $35 no-frills toaster oven.
-
-![simple_oven](photos/cheap_toaster_oven.jpg)
-
 After the controller was built, one test run:
 
-![first try](first-reflow-try.jpg)
+![first try](photos/first-reflow-try.jpg)
 
 
 
