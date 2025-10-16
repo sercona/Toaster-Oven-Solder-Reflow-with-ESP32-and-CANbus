@@ -8,6 +8,10 @@ Here is a cheap $35 no-frills toaster oven.
 
 ![simple_oven](photos/cheap_toaster_oven.jpg)
 
+After the controller was built, one test run:
+
+![first try](first-reflow-try.jpg)
+
 
 
 ## First boot screen
